@@ -198,7 +198,6 @@ docker run -it --rm \
 - **grabia_cli.py**: Command-line interface with progress monitoring
 - **launch.py**: Cross-platform launcher with automatic setup
 
-### Protected Assets
 
 The core engine implements battle-tested patterns:
 
