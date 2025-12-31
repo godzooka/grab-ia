@@ -1,6 +1,6 @@
 # grabia_core.py
-# ðŸ›ï¸ GRAB-IA CORE ENGINE - BLOCK 1/3
-# Version: 2.0.0 | Protocol: SNOWBALL-STRICT | Status: FOUNDATIONAL
+# ðŸ›ï¸ GRAB-IA CORE ENGINE 
+# Version: 2.0.0 | 
 
 """
 GRAB-IA CORE ENGINE
@@ -18,10 +18,6 @@ PROTECTED ASSETS IMPLEMENTED:
 - PERSISTENCE-001: SQLite WAL Engine
 - ASSET-040/045: Asynchronous Work-Ingestion
 
-SUPREME DIRECTIVES:
-- SD-1.1: System integrity over simplicity
-- SD-1.2: Changes must preserve entire system functionality
-- ASSET-GEN-001: Zero omissions permitted
 """
 
 import os
@@ -154,7 +150,7 @@ class DownloadTask:
                 self.priority = 80
             else:
                 self.priority = 50
-# grabia_core.py - BLOCK 2/3
+
 # Core Class Definition, Initialization, and Thread Management
 
 # =========================================================
@@ -435,7 +431,7 @@ class GrabIACore:
                 if self.target_workers > 1:
                     self.target_workers = max(1, self.target_workers - 1)
                     self._log(f"📉 Scaling DOWN to {self.target_workers} workers", "warning")
-# grabia_core.py - BLOCK 3/3
+
 # Worker Loop, Scanner Loop, Helper Methods, and UI Bridge
 
     def _worker_loop(self):
