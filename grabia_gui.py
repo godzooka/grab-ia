@@ -41,7 +41,6 @@ class GrabIAGUI(QMainWindow):
 
     DISPLAY_NAMES = {
         "queue_depth": "Queue",
-        "target_workers": "Workers",
         "failed_files": "Failed",
         "current_speed_mbps": "Speed",
         "active_threads": "Active",
@@ -52,7 +51,7 @@ class GrabIAGUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("grab-IA Downloader")
+        self.setWindowTitle("grab-IA   |   Internet Archive Downloader")
         self.resize(1400, 900)
 
         self.core = None
@@ -80,7 +79,7 @@ class GrabIAGUI(QMainWindow):
         self.metric_labels = {}
         header = QHBoxLayout()
         for key in [
-            "queue_depth", "target_workers", "failed_files",
+            "queue_depth", "failed_files",
             "current_speed_mbps", "active_threads",
             "total_files", "items_done", "scanned_ids"
         ]:
@@ -88,7 +87,6 @@ class GrabIAGUI(QMainWindow):
             lbl = QLabel(f"{title}: 0")
             lbl.setToolTip({
                 "queue_depth": "Number of files currently waiting in the download queue",
-                "target_workers": "Configured maximum number of worker threads",
                 "failed_files": "Files that failed to download",
                 "current_speed_mbps": "Current aggregate download speed",
                 "active_threads": "Workers actively downloading files",
@@ -340,7 +338,7 @@ class GrabIAGUI(QMainWindow):
             else:
                 lbl.setText(f"{title}: {stats.get(k, 0)}")
 
-        self.progress.setValue(int(stats["percent_complete"]))
+        self.progress.setValue(int(stats.get("job_percent_complete", 0)))
 
         logs, self.log_index = self.core.get_logs(self.log_index)
         cursor = self.log_view.textCursor()
@@ -362,6 +360,7 @@ class GrabIAGUI(QMainWindow):
             and not stats["scanner_active"]
             and stats["queue_depth"] == 0
             and stats["items_done"] + stats["failed_files"] >= stats["total_files"]
+            and stats["total_files"] > 0
         ):
             self.job_finished = True
 

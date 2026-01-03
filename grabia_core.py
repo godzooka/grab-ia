@@ -866,6 +866,32 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             self.executor = None
 
         self._log("Engine stopped", "info")
+
+    def _get_persistent_job_progress(self) -> Tuple[int, int, int]:
+        """
+        Get persistent job progress from SQLite.
+        
+        Returns:
+            (total_files, done_files, failed_files)
+        """
+        try:
+            conn = self._get_db_connection()
+            cur = conn.cursor()
+
+            cur.execute("SELECT COUNT(*) FROM files")
+            total = cur.fetchone()[0] or 0
+
+            cur.execute("SELECT COUNT(*) FROM files WHERE status = 'done'")
+            done = cur.fetchone()[0] or 0
+
+            cur.execute("SELECT COUNT(*) FROM files WHERE status = 'failed'")
+            failed = cur.fetchone()[0] or 0
+
+            conn.close()
+            return total, done, failed
+        except Exception:
+            return 0, 0, 0
+
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -891,6 +917,12 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             percent_complete = 0.0
             if self.total_files > 0:
                 percent_complete = (self.items_done / self.total_files) * 100
+            # Persistent (resume-safe) job progress
+            job_total, job_done, job_failed = self._get_persistent_job_progress()
+            job_percent_complete = 0.0
+            if job_total > 0:
+                job_percent_complete = ((job_done + job_failed) / job_total) * 100
+
             
             return {
                 "scanned_ids": self.scanned_ids,
@@ -912,7 +944,11 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 "global_backoff_until": self.global_backoff_until,
                 "scanner_active": self.scanner_active,
                 "queue_depth": self.task_queue.qsize(),
-                "heartbeat": time.time()  # APFE-IV-34: Heartbeat Signature
+                "heartbeat": time.time(),  # APFE-IV-34: Heartbeat Signature
+                "job_total_files": job_total,
+                "job_files_done": job_done,
+                "job_percent_complete": job_percent_complete,
+
             }
     
     def get_logs(self, from_index: int = 0) -> Tuple[List[str], int]:
