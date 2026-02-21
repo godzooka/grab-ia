@@ -21,6 +21,45 @@ from typing import List
 from grabia_core import GrabIACore
 
 
+def _load_s3_credentials(auth_path: str):
+    """
+    Load S3 credentials from a file.
+    Expects lines like:
+        S3_ACCESS_KEY=your_access_key
+        S3_SECRET_KEY=your_secret_key
+    or shorthand:
+        access=your_access_key
+        secret=your_secret_key
+    Returns (access_key, secret_key) tuple or None.
+    """
+    if not auth_path:
+        return None
+    p = Path(auth_path)
+    if not p.exists():
+        print(f"⚠  Auth file not found: {auth_path}")
+        return None
+    try:
+        creds = {}
+        for line in p.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                key, _, val = line.partition('=')
+                creds[key.strip().lower()] = val.strip()
+        access = creds.get('s3_access_key') or creds.get('access')
+        secret = creds.get('s3_secret_key') or creds.get('secret')
+        if access and secret:
+            print("✓ Credentials loaded from auth file")
+            return (access, secret)
+        else:
+            print("⚠  Auth file found but missing access/secret keys")
+            return None
+    except Exception as e:
+        print(f"⚠  Failed to read auth file: {e}")
+        return None
+
+
 class GrabIACLI:
     """Command-line interface for grab-IA."""
     
@@ -166,7 +205,13 @@ class GrabIACLI:
         print(f"   Sync mode: {'ON' if args.sync else 'OFF'}")
         print(f"   Dynamic scaling: {'ON' if args.dynamic else 'OFF'}")
         print(f"   Metadata only: {'ON' if args.metadata_only else 'OFF'}")
-        
+
+        s3_credentials = _load_s3_credentials(getattr(args, 'auth', None))
+        if s3_credentials:
+            print("   Auth: ✓ Credentials loaded")
+        else:
+            print("   Auth: None (public access)")
+
         self.core = GrabIACore(
             output_dir=args.output,
             max_workers=args.workers,
@@ -175,7 +220,8 @@ class GrabIACLI:
             filter_regex=args.filter if args.filter else None,
             extension_whitelist=extensions,
             dynamic_scaling=args.dynamic,
-            metadata_only=args.metadata_only
+            metadata_only=args.metadata_only,
+            s3_credentials=s3_credentials
         )
         
         # Start job
@@ -211,6 +257,11 @@ class GrabIACLI:
         
         # Initialize core (will read from existing DB)
         print("⚙️  Initializing engine...")
+        s3_credentials = _load_s3_credentials(getattr(args, 'auth', None))
+        if s3_credentials:
+            print("   Auth: ✓ Credentials loaded")
+        else:
+            print("   Auth: None (public access)")
         self.core = GrabIACore(
             output_dir=args.output,
             max_workers=args.workers,
@@ -219,7 +270,8 @@ class GrabIACLI:
             filter_regex=args.filter if args.filter else None,
             extension_whitelist=extensions,
             dynamic_scaling=args.dynamic,
-            metadata_only=args.metadata_only
+            metadata_only=args.metadata_only,
+            s3_credentials=s3_credentials
         )
         
         # Get pending items from database
@@ -321,6 +373,7 @@ Examples:
     start_parser.add_argument('--metadata-only', action='store_true', help='Download metadata only')
     start_parser.add_argument('--filter', help='Filename regex filter')
     start_parser.add_argument('--extensions', help='Comma-separated extensions (e.g., mp3,pdf)')
+    start_parser.add_argument('--auth', help='Path to auth/env file with S3_ACCESS_KEY and S3_SECRET_KEY')
     start_parser.add_argument('--verbose', '-v', action='store_true', help='Show detailed logs')
     
     # RESUME command
@@ -333,6 +386,7 @@ Examples:
     resume_parser.add_argument('--metadata-only', action='store_true', help='Download metadata only')
     resume_parser.add_argument('--filter', help='Filename regex filter')
     resume_parser.add_argument('--extensions', help='Comma-separated extensions')
+    resume_parser.add_argument('--auth', help='Path to auth/env file with S3_ACCESS_KEY and S3_SECRET_KEY')
     resume_parser.add_argument('--verbose', '-v', action='store_true', help='Show detailed logs')
     
     # STATUS command

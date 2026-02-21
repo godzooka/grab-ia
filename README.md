@@ -17,6 +17,7 @@ A thread-safe, resilient downloader for Internet Archive items with GUI, CLI, an
 - **⚡ High Performance**: Multi-threaded downloads with dynamic scaling
 - **🛡️ Robust**: MD5 verification, byte-level resume, global backoff
 - **🎯 Flexible Filtering**: Regex patterns, extension whitelists, metadata-only mode
+- **🔐 Authentication**: Optional S3 credentials for restricted Archive.org items
 - **💾 Persistent State**: SQLite database tracks all downloads
 - **🚀 Production Ready**: Docker support for servers and Kubernetes
 
@@ -273,6 +274,68 @@ All settings are available in the GUI sidebar:
 - Dynamic scaling
 - Metadata only
 
+### Authentication (Optional)
+
+Some Internet Archive items are restricted and require an account to download. grab-IA supports S3-style credentials that allow you to access items you have permission to download while logged in on archive.org.
+
+#### When Do You Need This?
+
+You will see `HTTP 401` errors in the log for files that require authentication. Public items never require credentials. Restricted items include patron-only uploads, items under lending restrictions, and collections that require an archive.org account.
+
+#### Getting Your S3 Keys
+
+1. Log in to your Internet Archive account at [archive.org](https://archive.org)
+2. Go to **https://archive.org/account/s3.php**
+3. Your **S3 Access Key** and **S3 Secret Key** will be shown on that page
+4. Keep these private — they grant download access to your account
+
+#### Creating a Credentials File
+
+Create a plain text file (e.g. `ia_credentials.env`) anywhere on your system with this format:
+
+```
+S3_ACCESS_KEY=your_access_key_here
+S3_SECRET_KEY=your_secret_key_here
+```
+
+Lines starting with `#` are treated as comments and ignored:
+
+```
+# grab-IA credentials - keep this file private
+S3_ACCESS_KEY=your_access_key_here
+S3_SECRET_KEY=your_secret_key_here
+```
+
+#### Using Credentials in the GUI
+
+Enter the full path to your credentials file in the **Auth / env path** field in the sidebar before clicking START. The log will confirm `✓ Credentials loaded from auth file` when the file is read successfully.
+
+#### Using Credentials in the CLI
+
+Pass the path to your credentials file with the `--auth` flag:
+
+```bash
+python grabia_cli.py start --items items.txt --output ./downloads --auth ./ia_credentials.env
+python grabia_cli.py resume --output ./downloads --auth ./ia_credentials.env
+```
+
+The startup output will confirm whether credentials were loaded:
+```
+   Auth: ✓ Credentials loaded
+```
+or
+```
+   Auth: None (public access)
+```
+
+#### Security Notes
+
+- **Never commit your credentials file to version control.** Add `*.env` to your `.gitignore`.
+- The credentials file is read once at job start and is not stored anywhere by grab-IA.
+- If the file path is left empty, grab-IA runs in public (unauthenticated) mode — this is the default and works for the vast majority of Archive.org content.
+
+
+
 ### CLI Options
 
 ```bash
@@ -290,6 +353,7 @@ python grabia_cli.py start --help
 | `--metadata-only` | Download metadata only | False |
 | `--filter` | Filename regex pattern | None |
 | `--extensions` | Comma-separated extensions | None |
+| `--auth` | Path to credentials file | None |
 | `--verbose` | Show detailed logs | False |
 
 ### Environment Variables (Docker)

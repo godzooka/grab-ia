@@ -289,11 +289,59 @@ class GrabIAGUI(QMainWindow):
         if d:
             self.output_dir.setText(d)
 
+    def _load_s3_credentials(self) -> tuple:
+        """
+        Load S3 credentials from the auth/env file path entered in the GUI.
+        Expects a file with lines like:
+            S3_ACCESS_KEY=your_access_key
+            S3_SECRET_KEY=your_secret_key
+        or the shorthand:
+            access=your_access_key
+            secret=your_secret_key
+        Returns a (access_key, secret_key) tuple, or None if not set / file missing.
+        """
+        path_text = self.auth_path.text().strip()
+        if not path_text:
+            return None
+        p = Path(path_text)
+        if not p.exists():
+            self._gui_log(f"⚠ Auth file not found: {path_text}")
+            return None
+        try:
+            creds = {}
+            for line in p.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' in line:
+                    key, _, val = line.partition('=')
+                    creds[key.strip().lower()] = val.strip()
+            access = creds.get('s3_access_key') or creds.get('access')
+            secret = creds.get('s3_secret_key') or creds.get('secret')
+            if access and secret:
+                self._gui_log("✓ Credentials loaded from auth file")
+                return (access, secret)
+            else:
+                self._gui_log("⚠ Auth file found but missing access/secret keys")
+                return None
+        except Exception as e:
+            self._gui_log(f"⚠ Failed to read auth file: {e}")
+            return None
+
+    def _gui_log(self, message: str):
+        """Append a message directly to the log view (pre-start messages)."""
+        cursor = self.log_view.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(message + "\n")
+        self.log_view.setTextCursor(cursor)
+
     def start_job(self):
         self.job_finished = False
         self.log_view.clear()
         self.log_buffer = LogBuffer()
         self.log_index = 0
+
+        s3_credentials = self._load_s3_credentials()
 
         self.core = GrabIACore(
             output_dir=self.output_dir.text(),
@@ -306,7 +354,8 @@ class GrabIAGUI(QMainWindow):
                 if e.strip()
             ] or None,
             dynamic_scaling=self.chk_dynamic.isChecked(),
-            metadata_only=self.chk_metadata.isChecked()
+            metadata_only=self.chk_metadata.isChecked(),
+            s3_credentials=s3_credentials
         )
 
         self.core.start(self.identifiers)
