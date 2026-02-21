@@ -468,9 +468,11 @@ class GrabIACore:
             except Exception as e:
                 self._log(f"Worker error: {e}", "error")
                 self._scale_workers(success=False)
+                # Don't retry auth failures - they will never succeed without credentials
+                permanent_failure = "401" in str(e) or "403" in str(e)
                 
                 # Re-queue with incremented attempt count (ASSET-018)
-                if task.attempt_count < 3:
+                if task.attempt_count < 3 and not permanent_failure:
                     task.attempt_count += 1
                     self.task_queue.put(task)
                     self._update_db_status(task.item_id, task.file_name, 'retrying', task.attempt_count)
@@ -479,8 +481,7 @@ class GrabIACore:
                     with self.stats_lock:
                         self.failed_files += 1
             finally:
-                self.task_queue.task_done()
-    
+                self.task_queue.task_done()    
     def _download_file(self, task: DownloadTask):
         """
         Download a single file with full integrity checking.
@@ -561,6 +562,12 @@ class GrabIACore:
             if response.status_code == 503:
                 self._trigger_backoff(duration=60)
                 raise Exception("Service unavailable (503)")
+            
+            if response.status_code == 401:
+                raise Exception("HTTP 401 - Unauthorized (credentials required)")
+            
+            if response.status_code == 403:
+                raise Exception("HTTP 403 - Forbidden (access denied)")
             
             if response.status_code not in (200, 206):
                 raise Exception(f"HTTP {response.status_code}")
