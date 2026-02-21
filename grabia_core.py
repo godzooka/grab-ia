@@ -983,8 +983,9 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         
         PROTECTED ASSET: APFE-IV-14/15 - Incremental Pointer Protection
         """
-        logs = self.debug_log[from_index:]
-        new_index = len(self.debug_log)
+        log_list = list(self.debug_log)      # ← convert deque to list first
+        logs = log_list[from_index:]
+        new_index = len(log_list)
         return logs, new_index
     
     def _get_disk_space(self) -> int:
