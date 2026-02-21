@@ -330,7 +330,6 @@ or
 
 #### Security Notes
 
-- **Never commit your credentials file to version control.** Add `*.env` to your `.gitignore`.
 - The credentials file is read once at job start and is not stored anywhere by grab-IA.
 - If the file path is left empty, grab-IA runs in public (unauthenticated) mode — this is the default and works for the vast majority of Archive.org content.
 
