@@ -246,7 +246,7 @@ class GrabIACore:
         
         # ===== UI BRIDGE (POLLING-HOOK & EVENT-STREAM) =====
         self.ui_events = deque(maxlen=1000)
-        self.debug_log = []
+        self.debug_log = deque(maxlen=50000)
         self.last_log_index = 0
         
         # ===== DATABASE (PERSISTENCE-001) =====
