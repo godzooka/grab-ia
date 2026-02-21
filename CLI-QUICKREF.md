@@ -34,7 +34,7 @@ python grabia_cli.py start \
   --items items.txt \
   --output ./downloads \
   --workers 8 \
-  --speed-limit 10  # 10 MB/s
+  --speed-limit 10  
 ```
 
 ### Music Collection (MP3/FLAC only)

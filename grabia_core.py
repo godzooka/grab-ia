@@ -503,14 +503,34 @@ class GrabIACore:
         # ASSET-015: Recursive Path Governance
         part_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Sync mode: Skip if exists and MD5 matches
+        # Sync mode: Skip if exists and MD5 matches (or size matches when no MD5)
         if self.sync_mode and final_path.exists():
-            if self._verify_md5(final_path, task.expected_md5):
-                self._log(f"✓ Skipped (sync): {task.file_name}", "info")
-                self._update_db_status(task.item_id, task.file_name, 'done', task.attempt_count)
-                with self.stats_lock:
-                    self.items_done += 1
-                return
+            if task.expected_md5:
+                # We have an MD5 - verify it properly
+                if self._verify_md5(final_path, task.expected_md5):
+                    self._log(f"✓ Skipped (sync, MD5 verified): {task.file_name}", "info")
+                    self._update_db_status(task.item_id, task.file_name, 'done', task.attempt_count)
+                    with self.stats_lock:
+                        self.items_done += 1
+                    return
+                else:
+                    self._log(f"⚠ MD5 mismatch on existing file, re-downloading: {task.file_name}", "warning")
+                    # falls through to download
+            else:
+                # No MD5 available - fall back to size check
+                if task.file_size > 0 and final_path.stat().st_size == task.file_size:
+                    self._log(f"✓ Skipped (sync, size verified): {task.file_name}", "info")
+                    self._update_db_status(task.item_id, task.file_name, 'done', task.attempt_count)
+                    with self.stats_lock:
+                        self.items_done += 1
+                    return
+                elif task.file_size == 0:
+                    # No MD5 and no size - file exists, trust it
+                    self._log(f"✓ Skipped (sync, no verification available): {task.file_name}", "info")
+                    self._update_db_status(task.item_id, task.file_name, 'done', task.attempt_count)
+                    with self.stats_lock:
+                        self.items_done += 1
+                    return
         
         # PROT-003: Byte-Level Resume
         resume_pos = 0
