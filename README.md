@@ -328,6 +328,20 @@ or
    Auth: None (public access)
 ```
 
+## Resuming Authenticated Jobs
+
+If you started a job with S3 credentials and need to resume it, always provide your credentials again.
+
+**CLI:**
+```bash
+python grabia_cli.py resume --output ./downloads --auth ./ia_credentials.env
+```
+
+**GUI:**
+Re-enter your auth file path in the **Auth / env path** field before clicking START on an existing output directory.
+
+> **Note:** Credentials are not stored between sessions. Omitting them on resume will cause restricted files to fail with 401 errors.
+
 #### Security Notes
 
 - The credentials file is read once at job start and is not stored anywhere by grab-IA.
