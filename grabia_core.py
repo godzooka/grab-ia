@@ -230,8 +230,10 @@ class GrabIACore:
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': USER_AGENT})
         if s3_credentials:
-            self.session.auth = s3_credentials
-        
+            access_key, secret_key = s3_credentials
+            self.session.headers.update({
+                'Authorization': f'LOW {access_key}:{secret_key}'
+            })
         # ===== STATE TRACKING =====
         self.stats_lock = threading.Lock()
         self.scanned_ids = 0
@@ -261,7 +263,12 @@ class GrabIACore:
         self._log("Core Engine Initialized", "info")
         self._log(f"Output Directory: {self.output_dir}", "info")
         self._log(f"Max Workers: {self.max_workers} | Dynamic Scaling: {self.dynamic_scaling}", "info")
-        
+        if self.s3_credentials:
+            self._log("✓ S3 credentials applied to session", "success")
+        else:
+            self._log("ℹ No credentials provided - public access only", "info")
+
+
     def _initialize_database(self):
         """
         Initialize SQLite database with WAL mode (PERSISTENCE-001).
@@ -730,7 +737,9 @@ class GrabIACore:
                     file_md5 = file_info.get('md5', '')
                     
                     # ASSET-VALID-001: Skip invalid entries
-                    if not file_name or file_size == 0:
+                    if not file_name:
+                        continue
+                    if file_size == 0 and not self.s3_credentials:
                         continue
                     
                     # FILTER-GATE: Anti-Clutter
@@ -766,7 +775,10 @@ class GrabIACore:
                         self.total_files += 1
                     
                     # ASSET-040/045: Eager Ingestion - Queue immediately
-                    file_url = f"https://archive.org/download/{identifier}/{file_name}"
+                    if self.s3_credentials:
+                        file_url = f"https://s3.us.archive.org/{identifier}/{file_name}"
+                    else:
+                        file_url = f"https://archive.org/download/{identifier}/{file_name}"
                     
                     task = DownloadTask(
                         priority=0,  # Auto-calculate in __post_init__
