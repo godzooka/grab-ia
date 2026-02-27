@@ -366,6 +366,9 @@ class GrabIAGUI(QMainWindow):
     def stop_job(self):
         if self.core:
             self.core.stop()
+        self.poll_timer.stop()        # stop polling a halted core
+        self.btn_start.setEnabled(True)   # re-enable START
+        self.btn_stop.setEnabled(False)   # disable STOP
 
     # =========================
     # POLLING
